@@ -295,8 +295,8 @@ INSTALL(FILES ${GEOTIFF_MAN_PAGES} DESTINATION share/man/man1)
 
 
 # Install header files for development distribution
-# INSTALL(FILES ${GEOTIFF_LIB_HEADERS} DESTINATION ${GEOTIFF_INCLUDE_DIR})
-INSTALL(FILES ${GEOTIFF_LIB_HEADERS} DESTINATION include)
+INSTALL(FILES ${GEOTIFF_LIB_HEADERS} DESTINATION ${GEOTIFF_INCLUDE_DIR})
+# INSTALL(FILES ${GEOTIFF_LIB_HEADERS} DESTINATION include)
 
 ###############################################################################
 # Build libxtiff library
