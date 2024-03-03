@@ -7,3 +7,5 @@
 ###############################################################################
 
 ADD_LIBRARY(xtiff STATIC xtiff.c)
+TARGET_LINK_LIBRARIES(xtiff
+    ${TIFF_TARGET})

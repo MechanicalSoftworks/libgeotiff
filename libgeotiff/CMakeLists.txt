@@ -122,31 +122,13 @@ INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/libxtiff)
 # TIFF support - required, default=ON
 SET(WITH_TIFF TRUE CACHE BOOL "Choose if TIFF support should be built")
 
-FIND_PACKAGE(PROJ NO_MODULE QUIET)
-if (NOT PROJ_FOUND)
-    FIND_PACKAGE(PROJ)
-endif ()
-
-IF(PROJ_FOUND)
-    INCLUDE_DIRECTORIES(${PROJ_INCLUDE_DIR})
-ELSE()
-    MESSAGE(FATAL_ERROR "Failed to detect PROJ >= 6")
-ENDIF()
-
 # Zlib support - optional, default=OFF
 SET(WITH_ZLIB FALSE CACHE BOOL "Choose if zlib support should be built")
-
+SET(ZLIB_TARGET "")
 IF(WITH_ZLIB)
-    FIND_PACKAGE(ZLIB NO_MODULE QUIET)
-    if (NOT ZLIB_FOUND)
-      FIND_PACKAGE(ZLIB)
-    endif ()
-
-    IF(ZLIB_FOUND)
-        SET(HAVE_ZIP 1)
-        INCLUDE_DIRECTORIES(${ZLIB_INCLUDE_DIR})
-        ADD_DEFINITIONS(-DHAVE_ZIP=${HAVE_ZIP})
-    ENDIF()
+    SET(ZLIB_TARGET "zlib")
+	SET(HAVE_ZIP 1)
+	ADD_DEFINITIONS(-DHAVE_ZIP=${HAVE_ZIP})
 ENDIF()
 
 # JPEG support - optional, default=OFF
@@ -166,31 +148,8 @@ IF(WITH_JPEG)
 ENDIF()
 
 IF(WITH_TIFF)
-    FIND_PACKAGE(TIFF NO_MODULE QUIET)
-    if (NOT TIFF_FOUND)
-      FIND_PACKAGE(TIFF REQUIRED)
-    endif ()
-
-    IF(TIFF_FOUND)
-        # Confirm required API is available
-        INCLUDE(CheckFunctionExists)
-        SET(CMAKE_REQUIRED_LIBRARIES ${TIFF_LIBRARIES})
-
-        CHECK_FUNCTION_EXISTS(TIFFOpen HAVE_TIFFOPEN)
-        IF(NOT HAVE_TIFFOPEN)
-            SET(TIFF_FOUND) # ReSET to NOT found for TIFF library
-            MESSAGE(FATAL_ERROR "Failed to link with libtiff - TIFFOpen function not found")
-        ENDIF()
-
-        CHECK_FUNCTION_EXISTS(TIFFMergeFieldInfo HAVE_TIFFMERGEFIELDINFO)
-        IF(NOT HAVE_TIFFMERGEFIELDINFO)
-            SET(TIFF_FOUND) # ReSET to NOT found for TIFF library
-            MESSAGE(FATAL_ERROR "Failed to link with libtiff - TIFFMergeFieldInfo function not found. libtiff 3.6.0 Beta or later required. Please upgrade or use an older version of libgeotiff")
-        ENDIF()
-
-        INCLUDE_DIRECTORIES(${TIFF_INCLUDE_DIR})
-        ADD_DEFINITIONS(-DHAVE_TIFF=1)
-    ENDIF(TIFF_FOUND)
+    SET(TIFF_TARGET "tiff")
+    ADD_DEFINITIONS(-DHAVE_TIFF=1)
 ENDIF(WITH_TIFF)
 
 # Turn off TOWGS84 support
@@ -350,7 +309,7 @@ IF(UNIX)
       set_target_properties(
         ${GEOTIFF_LIBRARY_TARGET}
         PROPERTIES
-        INSTALL_NAME_DIR "${CMAKE_INSTALL_PREFIX}/lib")
+        INSTALL_NAME_DIR "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}")
    endif()
 
 ELSE(UNIX)
@@ -363,9 +322,9 @@ SET_TARGET_PROPERTIES(${GEOTIFF_LIBRARY_TARGET} PROPERTIES
    OUTPUT_NAME ${GEOTIFF_LIB_NAME})
 
 TARGET_LINK_LIBRARIES(${GEOTIFF_LIBRARY_TARGET}
-    ${TIFF_LIBRARIES}
-    ${PROJ_LIBRARIES}
-    ${ZLIB_LIBRARIES}
+    ${TIFF_TARGET}
+    proj
+	${ZLIB_TARGET}
     ${JPEG_LIBRARIES})
 
 # INSTALL(TARGETS ${GEOTIFF_ARCHIVE_TARGET} ${GEOTIFF_LIBRARY_TARGET}
@@ -374,10 +333,10 @@ TARGET_LINK_LIBRARIES(${GEOTIFF_LIBRARY_TARGET}
 #   ARCHIVE DESTINATION ${GEOTIFF_LIB_DIR})
 
 INSTALL( TARGETS ${GEOTIFF_LIBRARY_TARGET}
-	 EXPORT depends
-	 RUNTIME DESTINATION bin
-         LIBRARY DESTINATION lib
-	 ARCHIVE DESTINATION lib )
+	 EXPORT targets
+	 RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+	 LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+	 ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} )
 
 # Define grouping of source files in PROJECT file (e.g. Visual Studio)
 SOURCE_GROUP("CMake Files" FILES CMakeLists.txt)

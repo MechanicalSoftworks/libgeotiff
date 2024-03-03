@@ -38,7 +38,7 @@ else()
 set (@PROJECT_NAME@_STATIC_LIBRARIES @GEOTIFF_LIBRARY_TARGET@)
 endif()
 # Read in the exported definition of the library
-include ("${_DIR}/@PROJECT_NAME_LOWER@-depends.cmake")
+include ("${_DIR}/@PROJECT_NAME_LOWER@-targets.cmake")
 
 unset (_ROOT)
 unset (_DIR)
