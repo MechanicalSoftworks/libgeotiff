@@ -106,17 +106,11 @@ endif (MSVC)
 # TIFF support - required, default=ON
 option(WITH_TIFF "Choose if TIFF support should be built" ON)
 
-FIND_PACKAGE(PROJ NO_MODULE QUIET)
-if (NOT PROJ_FOUND)
-  FIND_PACKAGE(PROJ REQUIRED)
-endif ()
-
 # Zlib support - optional, default=OFF
 option(WITH_ZLIB "Choose if zlib support should be built" OFF)
 
 # JPEG support - optional, default=OFF
 option(WITH_JPEG  "Choose if JPEG support should be built" OFF)
-
 
 # Turn off TOWGS84 support
 option(WITH_TOWGS84 "Build with TOWGS84 support" ON)
@@ -235,40 +229,15 @@ ENDIF()
 
 
 IF(WITH_TIFF)
-    FIND_PACKAGE(TIFF NO_MODULE QUIET)
-    if (NOT TIFF_FOUND)
-      FIND_PACKAGE(TIFF REQUIRED)
-    endif ()
-
-    IF(TIFF_FOUND)
-        # Confirm required API is available
-        INCLUDE(CheckFunctionExists)
-        SET(CMAKE_REQUIRED_LIBRARIES ${TIFF_LIBRARIES})
-
-        CHECK_FUNCTION_EXISTS(TIFFOpen HAVE_TIFFOPEN)
-        IF(NOT HAVE_TIFFOPEN)
-            SET(TIFF_FOUND) # ReSET to NOT found for TIFF library
-            MESSAGE(FATAL_ERROR "Failed to link with libtiff - TIFFOpen function not found")
-        ENDIF()
-
-        CHECK_FUNCTION_EXISTS(TIFFMergeFieldInfo HAVE_TIFFMERGEFIELDINFO)
-        IF(NOT HAVE_TIFFMERGEFIELDINFO)
-            SET(TIFF_FOUND) # ReSET to NOT found for TIFF library
-            MESSAGE(FATAL_ERROR "Failed to link with libtiff - TIFFMergeFieldInfo function not found. libtiff 3.6.0 Beta or later required. Please upgrade or use an older version of libgeotiff")
-        ENDIF()
-
-        TARGET_INCLUDE_DIRECTORIES(${GEOTIFF_LIBRARY_TARGET} PRIVATE ${TIFF_INCLUDE_DIR})
-        TARGET_COMPILE_DEFINITIONS(${GEOTIFF_LIBRARY_TARGET} PRIVATE -DHAVE_TIFF=1)
-    ENDIF(TIFF_FOUND)
+    SET(TIFF_TARGET "tiff")
+    ADD_DEFINITIONS(-DHAVE_TIFF=1)
 ENDIF(WITH_TIFF)
 
+SET(ZLIB_TARGET "")
 IF(WITH_ZLIB)
-    FIND_PACKAGE(ZLIB REQUIRED )
-    IF(ZLIB_FOUND)
-        SET(HAVE_ZIP 1)
-        TARGET_INCLUDE_DIRECTORIES(${GEOTIFF_LIBRARY_TARGET} PRIVATE ${ZLIB_INCLUDE_DIR})
-        TARGET_COMPILE_DEFINITIONS(${GEOTIFF_LIBRARY_TARGET} PRIVATE -DHAVE_ZIP=${HAVE_ZIP})
-    ENDIF()
+    SET(ZLIB_TARGET "zlib")
+	SET(HAVE_ZIP 1)
+	ADD_DEFINITIONS(-DHAVE_ZIP=${HAVE_ZIP})
 ENDIF()
 
 TARGET_INCLUDE_DIRECTORIES(${GEOTIFF_LIBRARY_TARGET} PUBLIC
@@ -323,12 +292,8 @@ ENDIF()
 
 set(CONFIG_PUBLIC_DEPENDENCIES "")
 set(CONFIG_PRIVATE_DEPENDENCIES "")
-if(TARGET TIFF::TIFF)
-    set(TIFF_LIBRARIES TIFF::TIFF)
-    string(APPEND CONFIG_PUBLIC_DEPENDENCIES "find_dependency(TIFF)\n")
-endif()
 target_link_libraries(${GEOTIFF_LIBRARY_TARGET} PUBLIC
-    ${TIFF_LIBRARIES})
+    ${TIFF_TARGET})
 
 if(TARGET PROJ::proj)
     set(PROJ_LIBRARIES PROJ::proj)
@@ -341,9 +306,9 @@ if(TARGET ZLIB::zlib)
 endif()
 
 target_link_libraries(${GEOTIFF_LIBRARY_TARGET} PRIVATE
-                      ${PROJ_LIBRARIES}
-                      ${TIFF_LIBRARIES}
-                      ${ZLIB_LIBRARIES})
+                      proj
+                      ${TIFF_TARGET}
+                      ${ZLIB_TARGET})
 
 target_include_directories( ${GEOTIFF_LIBRARY_TARGET} PUBLIC
             $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>
