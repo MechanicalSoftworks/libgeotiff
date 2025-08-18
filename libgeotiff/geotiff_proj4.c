@@ -410,6 +410,30 @@ int GTIFSetFromProj4( GTIF *gtif, const char *proj4 )
                    OSR_GDV( papszNV, "y_0", 0.0 ) );
     }
 
+    else if( EQUAL(value, "eqc") )
+    {
+        GTIFKeySet(gtif, GTModelTypeGeoKey, TYPE_SHORT, 1, ModelTypeProjected);
+        GTIFKeySet(gtif, ProjectedCSTypeGeoKey, TYPE_SHORT, 1, KvUserDefined);
+        GTIFKeySet(gtif, ProjectionGeoKey, TYPE_SHORT, 1, KvUserDefined);
+        GTIFKeySet(gtif, ProjCoordTransGeoKey, TYPE_SHORT, 1, CT_Equirectangular);
+
+        if (OSR_GDV(papszNV, "lat_0", 0.0) != OSR_GDV(papszNV, "lat_ts", 0.0))
+        {
+            GTIFKeySet(gtif, ProjNatOriginLatGeoKey, TYPE_DOUBLE, 1, OSR_GDV(papszNV, "lat_0", 0.0));
+            GTIFKeySet(gtif, ProjStdParallel1GeoKey, TYPE_DOUBLE, 1, OSR_GDV(papszNV, "lat_ts", 0.0));
+        }
+        else
+        {
+            const double lat_ts = OSR_GDV(papszNV, "lat_ts", 0.0);
+            GTIFKeySet(gtif, ProjCenterLatGeoKey, TYPE_DOUBLE, 1, lat_ts);
+            GTIFKeySet(gtif, ProjStdParallel1GeoKey, TYPE_DOUBLE, 1, lat_ts);
+        }
+
+        GTIFKeySet(gtif, ProjCenterLongGeoKey, TYPE_DOUBLE, 1, OSR_GDV(papszNV, "lon_0", 0.0));
+        GTIFKeySet(gtif, ProjFalseEastingGeoKey, TYPE_DOUBLE, 1, OSR_GDV(papszNV, "x_0", 0.0));
+        GTIFKeySet(gtif, ProjFalseNorthingGeoKey, TYPE_DOUBLE, 1, OSR_GDV(papszNV, "y_0", 0.0));
+    }
+
 #ifdef notdef
     else if( EQUAL(value,"bonne") )
     {
@@ -499,21 +523,6 @@ int GTIFSetFromProj4( GTIF *gtif, const char *proj4 )
                           1.0,
                           OSR_GDV( papszNV, "x_0", 0.0 ),
                           OSR_GDV( papszNV, "y_0", 0.0 ) );
-    }
-
-    else if( EQUAL(value,"eqc") )
-    {
-        if( OSR_GDV( papszNV, "lat_0", 0.0 ) != OSR_GDV( papszNV, "lat_ts", 0.0 ) )
-          SetEquirectangular2( OSR_GDV( papszNV, "lat_0", 0.0 ),
-                               OSR_GDV( papszNV, "lon_0", 0.0 )+dfFromGreenwich,
-                               OSR_GDV( papszNV, "lat_ts", 0.0 ),
-                               OSR_GDV( papszNV, "x_0", 0.0 ),
-                               OSR_GDV( papszNV, "y_0", 0.0 ) );
-        else
-          SetEquirectangular( OSR_GDV( papszNV, "lat_ts", 0.0 ),
-                              OSR_GDV( papszNV, "lon_0", 0.0 )+dfFromGreenwich,
-                              OSR_GDV( papszNV, "x_0", 0.0 ),
-                              OSR_GDV( papszNV, "y_0", 0.0 ) );
     }
 
    else if( EQUAL(value,"glabsgm") )
