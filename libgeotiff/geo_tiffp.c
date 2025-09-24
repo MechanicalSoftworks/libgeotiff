@@ -42,14 +42,14 @@ void _GTIFSetDefaultTIFF(TIFFMethod *method)
 
 gdata_t _GTIFcalloc(gsize_t size)
 {
-    gdata_t data=(gdata_t)_TIFFmalloc((tsize_t)size);
+    gdata_t data=(gdata_t)_TIFFmalloc(NULL, (tsize_t)size);
 	if (data) _TIFFmemset((tdata_t)data,0,(tsize_t)size);
 	return data;
 }
 
 gdata_t _GTIFrealloc(gdata_t ptr, gsize_t size)
 {
-    return _TIFFrealloc((tdata_t)ptr, (tsize_t) size);
+    return _TIFFrealloc(NULL, (tdata_t)ptr, (tsize_t) size);
 }
 
 void _GTIFmemcpy(gdata_t out,gdata_t in,gsize_t size)
@@ -59,7 +59,7 @@ void _GTIFmemcpy(gdata_t out,gdata_t in,gsize_t size)
 
 void _GTIFFree(gdata_t data)
 {
-	if (data) _TIFFfree((tdata_t)data);
+	if (data) _TIFFfree(NULL, (tdata_t)data);
 }
 
 
