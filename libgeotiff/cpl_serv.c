@@ -25,6 +25,7 @@
  */
 
 #include "cpl_serv.h"
+#include "cpl_string.h"
 #include "geo_tiffp.h"
 
 /************************************************************************/
@@ -308,7 +309,7 @@ void CSLDestroy(char **papszStrList)
  *
  * Allocate and return a copy of a StringList.
  **********************************************************************/
-char    **CSLDuplicate(char **papszStrList)
+char    **CSLDuplicate(CSLConstList papszStrList)
 {
     const int nLines = CSLCount(papszStrList);
 
@@ -435,8 +436,9 @@ char ** CSLTokenizeStringComplex( const char * pszString,
  * messages cannot be longer than 2000 chars... which is quite reasonable
  * (that's 25 lines of 80 chars!!!)
  */
-static char gszCPLLastErrMsg[2000] = "";
-static int  gnCPLLastErrNo = 0;
+static char   gszCPLLastErrMsg[2000] = "";
+static CPLErr gnCPLLastErrType = CE_None;
+static int    gnCPLLastErrNo = 0;
 
 static void (*gpfnCPLErrorHandler)(CPLErr, int, const char *) = NULL;
 
@@ -462,6 +464,7 @@ void    CPLError(CPLErr eErrClass, int err_no, const char *fmt, ...)
      * it, otherwise print the error to stderr and return.
      */
     gnCPLLastErrNo = err_no;
+    gnCPLLastErrType = eErrClass;
 
     if (gpfnCPLErrorHandler != NULL)
     {
@@ -501,6 +504,26 @@ int     CPLGetLastErrorNo()
 }
 
 /**********************************************************************
+ *                          CPLGetLastErrorType()
+ **********************************************************************/
+
+/**
+ * Fetch the last error type.
+ *
+ * Fetches the last error type posted with CPLError(), that hasn't
+ * been cleared by CPLErrorReset().  This is the error class, not the error
+ * number.
+ *
+ * @return the error type of the last error to occur, or CE_None (0)
+ * if there are no posted errors.
+ */
+
+CPLErr CPL_STDCALL CPLGetLastErrorType()
+{
+    return gnCPLLastErrType;
+}
+
+/**********************************************************************
  *                          CPLGetLastErrorMsg()
  *
  **********************************************************************/
@@ -521,9 +544,18 @@ const char* CPLGetLastErrorMsg()
  * Pass NULL to come back to the default behavior.
  **********************************************************************/
 
-void     CPLSetErrorHandler(void (*pfnErrorHandler)(CPLErr, int, const char *))
+void     CPLSetErrorHandler(CPLErrorHandler pfnErrorHandler)
 {
     gpfnCPLErrorHandler = pfnErrorHandler;
+}
+
+/**********************************************************************
+ *                          CPLGetErrorHandler()
+ **********************************************************************/
+
+CPLErrorHandler GTIF_DLL CPLGetErrorHandler()
+{
+    return gpfnCPLErrorHandler;
 }
 
 /************************************************************************/
@@ -540,4 +572,43 @@ void _CPLAssert( const char * pszExpression, const char * pszFile,
               "Assertion `%s' failed\n"
               "in file `%s', line %d\n",
               pszExpression, pszFile, iLine );
+}
+
+/************************************************************************/
+/*                              CPLDebug()                              */
+/************************************************************************/
+
+/**
+ * Display a debugging message.
+ *
+ * The category argument is used in conjunction with the CPL_DEBUG
+ * environment variable to establish if the message should be displayed.
+ * If the CPL_DEBUG environment variable is not set, no debug messages
+ * are emitted (use CPLError(CE_Warning, ...) to ensure messages are displayed).
+ * If CPL_DEBUG is set, but is an empty string or the word "ON" then all
+ * debug messages are shown.  Otherwise only messages whose category appears
+ * somewhere within the CPL_DEBUG value are displayed (as determined by
+ * strstr()).
+ *
+ * Categories are usually an identifier for the subsystem producing the
+ * error.  For instance "GDAL" might be used for the GDAL core, and "TIFF"
+ * for messages from the TIFF translator.
+ *
+ * @param pszCategory name of the debugging message category.
+ * @param pszFormat printf() style format string for message to display.
+ *        Remaining arguments are assumed to be for format.
+ */
+
+void CPLDebug(const char *pszCategory, const char *pszFormat,
+              ...)
+
+{
+    char buffer[2048];
+
+    va_list args;
+    va_start(args, pszFormat);
+    CPLvsnprintf(buffer, sizeof(buffer), pszFormat, args);
+    va_end(args);
+
+    CPLError(CE_Warning, CPLE_None, buffer);
 }

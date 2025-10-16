@@ -90,6 +90,13 @@ SET(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
 INCLUDE(CheckIncludeFiles)
 CHECK_INCLUDE_FILES(strings.h GEOTIFF_HAVE_STRINGS_H)
 
+include(CheckTypeSize)
+check_type_size("int" SIZEOF_INT)
+check_type_size("unsigned long" SIZEOF_UNSIGNED_LONG)
+check_type_size("long int" SIZEOF_LONG_INT)
+check_type_size("void*" SIZEOF_VOIDP)
+check_type_size("size_t" SIZEOF_SIZE_T)
+
 ###############################################################################
 # User-defined build settings
 
@@ -129,6 +136,16 @@ INCLUDE_DIRECTORIES(BEFORE ${CMAKE_CURRENT_BINARY_DIR})
 
 MESSAGE(STATUS "Generating geo_config.h header - done")
 
+
+###############################################################################
+# Generate geo_config.h with compile-time configuration
+
+MESSAGE(STATUS "Generating cpl_config.h header")
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/cpl_config.h.in cpl_config.h @ONLY)
+INCLUDE_DIRECTORIES(BEFORE ${CMAKE_CURRENT_BINARY_DIR})
+
+MESSAGE(STATUS "Generating cpl_config.h header - done")
 
 ###############################################################################
 # Installation settings
@@ -184,6 +201,14 @@ INSTALL(FILES ${GEOTIFF_LIB_HEADERS} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 SET(GEOTIFF_LIB_SOURCES
     cpl_serv.c
+    cpl_character_sets.c
+    cpl_string.cpp
+	cpl_recode.cpp
+	cpl_conv.cpp
+	cpl_recode_stub.cpp
+	cpl_strtod.cpp
+	cplstring.cpp
+	cplstringlist.cpp
     geo_extra.c
     geo_free.c
     geo_get.c
@@ -196,7 +221,12 @@ SET(GEOTIFF_LIB_SOURCES
     geo_tiffp.c
     geo_trans.c
     geo_write.c
-    geotiff_proj4.c)
+    geotiff_proj4.c
+	geotiff_wkt.cpp
+    gt_citation.cpp
+    ogrspatialreference.cpp
+	ogr_srs_dict.cpp
+	ogr_srsnode.cpp)
 
 SET(XTIFF_SOURCES libxtiff/xtiff.c)
 
