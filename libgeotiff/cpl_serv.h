@@ -29,6 +29,10 @@
 #ifndef CPL_SERV_H_INCLUDED
 #define CPL_SERV_H_INCLUDED
 
+#define GDALGTIFKeyGetSHORT GTIFKeyGetSHORT
+#define GDALGTIFKeyGetASCII GTIFKeyGetASCII
+#define GDALGTIFKeyGetDOUBLE GTIFKeyGetDOUBLE
+
 /* ==================================================================== */
 /*	Standard include files.						*/
 /* ==================================================================== */
@@ -125,6 +129,10 @@
 #define VSIFSeek        fseek
 #define VSIFTell        ftell
 #define VSIFRead        fread
+#define VSI_CALLOC_VERBOSE  calloc
+#define VSI_MALLOC_VERBOSE  malloc
+#define VSI_REALLOC_VERBOSE realloc
+#define VSI_STRDUP_VERBOSE  CPLStrdup
 
 #ifndef notdef
 #define VSICalloc(x,y)	_GTIFcalloc((x)*(y))
@@ -138,6 +146,14 @@
 #define VSIRealloc(p,n) (((char *) _GTIFrealloc(((char *)(p))-4,(n)+4)) + 4)
 #endif
 
+typedef struct stat VSIStatBufL;
+#define VSIStat stat
+#define VSIStatExL(path, st, flags) VSIStat(path, st)
+
+typedef FILE VSILFILE;
+#define VSIFOpenL(path, flags)          fopen(path, flags)
+#define VSIFReadL(buf, size, count, fp) fread(buf, size, count, fp)
+#define VSIFCloseL(fp)                  fclose(fp)
 
 #if !defined(GTIFAtof) 
 #  define GTIFAtof atof 
@@ -189,19 +205,26 @@ typedef enum
     CE_Fatal = 4
 } CPLErr;
 
+#define CPLDebug      gtCPLDebug
 #define CPLError      gtCPLError
 #define CPLErrorReset gtCPLErrorReset
 #define CPLGetLastErrorNo gtCPLGetLastErrorNo
+#define CPLGetLastErrorType gtCPLGetLastErrorType
 #define CPLGetLastErrorMsg gtCPLGetLastErrorMsg
 #define CPLSetErrorHandler gtCPLSetErrorHandler
 #define _CPLAssert    gt_CPLAssert
 
+typedef void(*CPLErrorHandler)(CPLErr, int, const char*);
+
+void CPLDebug(const char* pszCategory, const char* pszFormat, ...);
+
 void GTIF_DLL CPLError(CPLErr eErrClass, int err_no, const char *fmt, ...);
 void GTIF_DLL CPLErrorReset();
 int  GTIF_DLL CPLGetLastErrorNo();
+CPLErr GTIF_DLL CPLGetLastErrorType();
 const char GTIF_DLL * CPLGetLastErrorMsg();
-void GTIF_DLL CPLSetErrorHandler(void(*pfnErrorHandler)(CPLErr,int,
-                                                       const char *));
+void GTIF_DLL CPLSetErrorHandler(CPLErrorHandler pfnHandler);
+CPLErrorHandler GTIF_DLL CPLGetErrorHandler();
 void GTIF_DLL _CPLAssert( const char *, const char *, int );
 
 #ifdef DEBUG
@@ -210,12 +233,51 @@ void GTIF_DLL _CPLAssert( const char *, const char *, int );
 #  define CPLAssert(expr)
 #endif
 
+/*! @cond Doxygen_Suppress */
+/*
+ * Helper macros used for input parameters validation.
+ */
+#ifdef DEBUG
+#define VALIDATE_POINTER_ERR CE_Fatal
+#else
+#define VALIDATE_POINTER_ERR CE_Failure
+#endif
+
+/** Validate that a pointer is not NULL */
+#define VALIDATE_POINTER0(ptr, func)                                           \
+    do                                                                         \
+    {                                                                          \
+        if (CPL_NULLPTR == ptr)                                                \
+        {                                                                      \
+            CPLErr const ret = VALIDATE_POINTER_ERR;                           \
+            CPLError(ret, CPLE_ObjectNull,                                     \
+                     "Pointer \'%s\' is NULL in \'%s\'.\n", #ptr, (func));     \
+            return;                                                            \
+        }                                                                      \
+    } while (0)
+
+/** Validate that a pointer is not NULL, and return rc if it is NULL */
+#define VALIDATE_POINTER1(ptr, func, rc)                                       \
+    do                                                                         \
+    {                                                                          \
+        if (CPL_NULLPTR == ptr)                                                \
+        {                                                                      \
+            CPLErr const ret = VALIDATE_POINTER_ERR;                           \
+            CPLError(ret, CPLE_ObjectNull,                                     \
+                     "Pointer \'%s\' is NULL in \'%s\'.\n", #ptr, (func));     \
+            return (rc);                                                       \
+        }                                                                      \
+    } while (0)
+
 CPL_C_END
 
 /* ==================================================================== */
 /*      Well known error codes.                                         */
 /* ==================================================================== */
 
+typedef int CPLErrorNum;
+
+#define CPLE_None           0
 #define CPLE_AppDefined			1
 #define CPLE_OutOfMemory		2
 #define CPLE_FileIO			3
@@ -224,11 +286,28 @@ CPL_C_END
 #define CPLE_NotSupported		6
 #define CPLE_AssertionFailed		7
 #define CPLE_NoWriteAccess		8
+#define CPLE_ObjectNull         10
 
 /*=====================================================================
                    Stringlist functions (strlist.c)
  =====================================================================*/
 CPL_C_START
+
+/* This typedef is for C functions that take char** as argument, but */
+/* with the semantics of a const list. In C, char** is not implicitly cast to */
+/* const char* const*, contrary to C++. So when seen for C++, it is OK */
+/* to expose the prototypes as const char* const*, but for C we keep the */
+/* historical definition to avoid warnings. */
+#if defined(__cplusplus) && !defined(CPL_SUPRESS_CPLUSPLUS) &&                 \
+    !defined(DOXYGEN_SKIP)
+/** Type of a constant null-terminated list of nul terminated strings.
+ * Seen as char** from C and const char* const* from C++ */
+    typedef const char* const* CSLConstList;
+#else
+/** Type of a constant null-terminated list of nul terminated strings.
+ * Seen as char** from C and const char* const* from C++ */
+    typedef char** CSLConstList;
+#endif
 
 #define CSLAddString gtCSLAddString
 #define CSLCount     gtCSLCount
@@ -242,7 +321,7 @@ char GTIF_DLL   **CSLAddString(char **papszStrList, const char *pszNewString);
 int  GTIF_DLL   CSLCount(char **papszStrList);
 const char GTIF_DLL *CSLGetField( char **, int );
 void GTIF_DLL   CSLDestroy(char **papszStrList);
-char GTIF_DLL   **CSLDuplicate(char **papszStrList);
+char GTIF_DLL   **CSLDuplicate(CSLConstList papszStrList);
 
 char GTIF_DLL   **CSLTokenizeString(const char *pszString );
 char GTIF_DLL   **CSLTokenizeStringComplex(const char *pszString,
@@ -256,6 +335,16 @@ char GTIF_DLL   **CSLTokenizeStringComplex(const char *pszString,
 #define SetCSVFilenameHook gtSetCSVFilenameHook
 void GTIF_DLL SetCSVFilenameHook( const char *(*CSVFileOverride)(const char *) );
 
+/*---------------------------------------------------------------------
+ * Does a string "a" start with string "b".  Search is case-sensitive or,
+ * with CI, it is a case-insensitive comparison.
+ *--------------------------------------------------------------------- */
+#ifndef STARTS_WITH_CI
+/** Returns whether a starts with b */
+#define STARTS_WITH(a, b) (strncmp(a, b, strlen(b)) == 0)
+/** Returns whether a starts with b (case insensitive comparison) */
+#define STARTS_WITH_CI(a, b) EQUALN(a, b, strlen(b))
+#endif
 
 CPL_C_END
 
