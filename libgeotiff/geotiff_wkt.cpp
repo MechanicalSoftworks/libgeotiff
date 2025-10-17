@@ -32,7 +32,7 @@
 static const geokey_t ProjLinearUnitsInterpCorrectGeoKey =
     static_cast<geokey_t>(3059);
 
-static void GTIFGetOGISDefnAsOSR(PJ_CONTEXT* ctx, GTIF* hGTIF, GTIFDefn* psDefn, OGRSpatialReference& oSRS);
+void GTIFGetOGISDefnAsOSR(PJ_CONTEXT* ctx, GTIF* hGTIF, GTIFDefn* psDefn, OGRSpatialReference& oSRS);
 
 /************************************************************************/
 /*                             GTIFGetWKT()                             */
@@ -330,7 +330,7 @@ static char *GTIFGetEPSGOfficialName(GTIF *hGTIF, PJ_TYPE searchType,
 /*                      GTIFGetOGISDefnAsOSR()                          */
 /************************************************************************/
 
-static void GTIFGetOGISDefnAsOSR(PJ_CONTEXT* projContext, GTIF* hGTIF, GTIFDefn* psDefn, OGRSpatialReference& oSRS)
+void GTIFGetOGISDefnAsOSR(PJ_CONTEXT* projContext, GTIF* hGTIF, GTIFDefn* psDefn, OGRSpatialReference& oSRS)
 {
 #if LIBGEOTIFF_VERSION >= 1600
     //void *projContext = GTIFGetPROJContext(hGTIF, FALSE, nullptr);
