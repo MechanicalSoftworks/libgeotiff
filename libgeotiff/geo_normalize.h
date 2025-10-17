@@ -244,6 +244,7 @@ int GTIF_DLL   GTIFProjToMapSys( int ProjCode, int * pZone );
  * These are only useful if using libgeotiff with libproj (PROJ.4+).
  */
 char GTIF_DLL *GTIFGetProj4Defn( GTIFDefn * );
+char GTIF_DLL *GTIFGetProj4DefnEX( void* ctx, GTIF *, GTIFDefn * );
 char GTIF_DLL *GTIFGetWKT( GTIF *, GTIFDefn * );
 char GTIF_DLL *GTIFGetWKTEx( void* ctx, GTIF *, GTIFDefn * );
 

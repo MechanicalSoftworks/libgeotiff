@@ -196,6 +196,7 @@ public:
     OGRErr exportToWkt(char **) const;
     OGRErr exportToWkt(char **ppszWKT, const char *const *papszOptions) const;
     std::string exportToWkt(const char *const *papszOptions = nullptr) const;
+    OGRErr exportToProj4(char **) const;
 
     OGRErr importFromWkt(char **)
         /*! @cond Doxygen_Suppress */

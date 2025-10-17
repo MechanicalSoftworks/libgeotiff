@@ -222,6 +222,7 @@ SET(GEOTIFF_LIB_SOURCES
     geo_trans.c
     geo_write.c
     geotiff_proj4.c
+	geotiff_proj4.cpp
 	geotiff_wkt.cpp
     gt_citation.cpp
     ogrspatialreference.cpp

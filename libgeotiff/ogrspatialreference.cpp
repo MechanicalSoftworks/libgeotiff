@@ -7883,6 +7883,119 @@ OGRErr OGRSpatialReference::importFromProj4(const char *pszProj4)
 }
 
 /************************************************************************/
+/*                           exportToProj4()                            */
+/************************************************************************/
+
+/**
+ * \brief Export coordinate system in PROJ.4 legacy format.
+ *
+ * \warning Use of this function is discouraged. Its behavior in GDAL &gt;= 3 /
+ * PROJ &gt;= 6 is significantly different from earlier versions. In particular
+ * +datum will only encode WGS84, NAD27 and NAD83, and +towgs84/+nadgrids terms
+ * will be missing most of the time. PROJ strings to encode CRS should be
+ * considered as a a legacy solution. Using a AUTHORITY:CODE or WKT
+ * representation is the recommended way.
+ *
+ * Converts the loaded coordinate reference system into PROJ format
+ * to the extent possible.  The string returned in ppszProj4 should be
+ * deallocated by the caller with CPLFree() when no longer needed.
+ *
+ * LOCAL_CS coordinate systems are not translatable.  An empty string
+ * will be returned along with OGRERR_NONE.
+ *
+ * Special processing for Transverse Mercator:
+ * Starting with GDAL 3.0, if the OSR_USE_APPROX_TMERC configuration option is
+ * set to YES, the PROJ definition built from the SRS will use the +approx flag
+ * for the tmerc and utm projection methods, rather than the more accurate
+ * method.
+ *
+ * Starting with GDAL 3.0.3, this method will try to add a +towgs84 parameter,
+ * if there's none attached yet to the SRS and if the SRS has a EPSG code.
+ * See the AddGuessedTOWGS84() method for how this +towgs84 parameter may be
+ * added. This automatic addition may be disabled by setting the
+ * OSR_ADD_TOWGS84_ON_EXPORT_TO_PROJ4 configuration option to NO.
+ *
+ * This method is the equivalent of the C function OSRExportToProj4().
+ *
+ * @param ppszProj4 pointer to which dynamically allocated PROJ definition
+ * will be assigned.
+ *
+ * @return OGRERR_NONE on success or an error code on failure.
+ */
+
+OGRErr OGRSpatialReference::exportToProj4(char **ppszProj4) const
+
+{
+    // In the past calling this method was thread-safe, even if we never
+    // guaranteed it. Now proj_as_proj_string() will cache the result
+    // internally, so this is no longer thread-safe.
+    std::lock_guard oLock(d->m_mutex);
+
+    d->refreshProjObj();
+    if (d->m_pj_crs == nullptr || d->m_pjType == PJ_TYPE_ENGINEERING_CRS)
+    {
+        *ppszProj4 = CPLStrdup("");
+        return OGRERR_FAILURE;
+    }
+
+    // OSR_USE_ETMERC is here just for legacy
+    bool bForceApproxTMerc = false;
+    const char *pszUseETMERC = CPLGetConfigOption("OSR_USE_ETMERC", nullptr);
+    if (pszUseETMERC && pszUseETMERC[0])
+    {
+        CPLError(CE_Warning, CPLE_AppDefined,
+                     "OSR_USE_ETMERC is a legacy configuration option, which "
+                     "now has only effect when set to NO (YES is the default). "
+                     "Use OSR_USE_APPROX_TMERC=YES instead");
+        bForceApproxTMerc = !CPLTestBool(pszUseETMERC);
+    }
+    else
+    {
+        const char *pszUseApproxTMERC =
+            CPLGetConfigOption("OSR_USE_APPROX_TMERC", nullptr);
+        if (pszUseApproxTMERC && pszUseApproxTMERC[0])
+        {
+            bForceApproxTMerc = CPLTestBool(pszUseApproxTMERC);
+        }
+    }
+    const char *options[] = {
+        bForceApproxTMerc ? "USE_APPROX_TMERC=YES" : nullptr, nullptr};
+
+    const char *projString = proj_as_proj_string(
+        d->getPROJContext(), d->m_pj_crs, PJ_PROJ_4, options);
+
+    PJ *boundCRS = nullptr;
+    if (projString &&
+        (strstr(projString, "+datum=") == nullptr ||
+         d->m_pjType == PJ_TYPE_COMPOUND_CRS) &&
+        CPLTestBool(
+            CPLGetConfigOption("OSR_ADD_TOWGS84_ON_EXPORT_TO_PROJ4", "YES")))
+    {
+        boundCRS = GDAL_proj_crs_create_bound_crs_to_WGS84(
+            d->getPROJContext(), d->m_pj_crs, true,
+            strstr(projString, "+datum=") == nullptr);
+        if (boundCRS)
+        {
+            projString = proj_as_proj_string(d->getPROJContext(), boundCRS,
+                                             PJ_PROJ_4, options);
+        }
+    }
+
+    if (projString == nullptr)
+    {
+        *ppszProj4 = CPLStrdup("");
+        proj_destroy(boundCRS);
+        return OGRERR_FAILURE;
+    }
+    *ppszProj4 = CPLStrdup(projString);
+    proj_destroy(boundCRS);
+    char *pszTypeCrs = strstr(*ppszProj4, " +type=crs");
+    if (pszTypeCrs)
+        *pszTypeCrs = '\0';
+    return OGRERR_NONE;
+}
+
+/************************************************************************/
 /*                           morphFromESRI()                            */
 /************************************************************************/
 
