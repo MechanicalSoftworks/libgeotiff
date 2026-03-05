@@ -1463,7 +1463,7 @@ OGRErr OGRSpatialReference::exportToWkt(char **ppszResult,
     // In the past calling this method was thread-safe, even if we never
     // guaranteed it. Now proj_as_wkt() will cache the result internally,
     // so this is no longer thread-safe.
-    std::lock_guard oLock(d->m_mutex);
+    std::lock_guard<std::recursive_mutex> oLock(d->m_mutex);
 
     d->refreshProjObj();
     if (!d->m_pj_crs)
@@ -7929,7 +7929,7 @@ OGRErr OGRSpatialReference::exportToProj4(char **ppszProj4) const
     // In the past calling this method was thread-safe, even if we never
     // guaranteed it. Now proj_as_proj_string() will cache the result
     // internally, so this is no longer thread-safe.
-    std::lock_guard oLock(d->m_mutex);
+    std::lock_guard<std::recursive_mutex> oLock(d->m_mutex);
 
     d->refreshProjObj();
     if (d->m_pj_crs == nullptr || d->m_pjType == PJ_TYPE_ENGINEERING_CRS)
