@@ -88,7 +88,7 @@ struct OGRSpatialReference::Private
     double dfToDegrees = 0.0;
     double m_dfAngularUnitToRadian = 0.0;
 
-    std::atomic<int> nRefCount = 1;
+    std::atomic<int> nRefCount{ 1 };
     int bNormInfoSet = FALSE;
 
     PJ *m_pj_geod_base_crs_temp = nullptr;
@@ -5295,9 +5295,9 @@ OGRErr OGRSpatialReference::SetPolyconic(double dfCenterLat,
 /** Sets a Polar Stereographic projection.
  *
  * Two variants are possible:
- * - Polar Stereographic Variant A: dfCenterLat must be +/- 90° and is
+ * - Polar Stereographic Variant A: dfCenterLat must be +/- 90ï¿½ and is
  *   interpreted as the latitude of origin, combined with the scale factor
- * - Polar Stereographic Variant B: dfCenterLat is different from +/- 90° and
+ * - Polar Stereographic Variant B: dfCenterLat is different from +/- 90ï¿½ and
  *   is interpreted as the latitude of true scale. In that situation, dfScale
  *   must be set to 1 (it is ignored in the projection parameters)
  */
